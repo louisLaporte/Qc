@@ -1,2 +1,2 @@
-files must be run one level the project directory
+files must be run one level up the project directory
 
