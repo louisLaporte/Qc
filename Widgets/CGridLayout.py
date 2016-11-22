@@ -30,7 +30,7 @@ class CGridLayout(CLayout):
             self.widget["row"]    = row
             self.widget["column"] = column
 
-            self.widgets.append(self.widget)
+            self.widgets.append(dict(self.widget))
 
             if row > self.row:
                 self.row = row
