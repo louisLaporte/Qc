@@ -12,19 +12,23 @@ def main():
     app = CApplication()
 
     try:
+        DEBUG("- ** START INIT")
         w = CWidget()
         w.setObjectName("main")
-
+        DEBUG("{}".format(w.objectName()))
         g = CGridLayout()
         g.setObjectName("layout_{}".format(0))
+        DEBUG("{}".format(g.objectName()))
 
         for i in range(0,1):
             for j in range(0,2):
                 w1 = CWidget()
                 w1.setObjectName("widget_{}_{}".format(i,j))
+                DEBUG("{}".format(w1.objectName()))
                 g.addWidget(w1,i,j)
 
         w.addLayout(g)
+        DEBUG("+ ** END INIT")
 
     except NameError as err:
         app.exit()

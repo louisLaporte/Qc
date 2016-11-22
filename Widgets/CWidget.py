@@ -83,6 +83,9 @@ class CWidget(CObject):
                 .format(self.objectName(),self.x, self.y, self.height(), self.width()), curses.A_BOLD)
         curses.noecho()
 
+        DEBUG("1) name {} | x: {} y: {} h: {} w: {}"
+        .format(self.objectName(),self.x, self.y, self.height(), self.width()) )
+
         self.win.refresh()
 
         if hasattr(self, "layout"):
@@ -103,21 +106,31 @@ class CWidget(CObject):
             self.layout["window"].addstr(self.h_l - 1, 1, "{} | h: {} w: {}"
                     .format(self.layout["object"].objectName(), self.h_l, self.w_l), curses.A_BOLD)
             curses.noecho()
+
+            DEBUG("2) name {}"
+            .format(self.layout["object"].objectName()) )
+
             self.layout["window"].refresh()
 
-            for widget in list(self.layout["object"].widgets):
+            for widget in self.layout["object"].widgets:
+
                 self.h_w = (self.h_l - diff_height) // (self.layout["object"].row    + 1)
                 self.w_w = (self.w_l - diff_width)  // (self.layout["object"].column + 1)
                 self.x_w = diff_width   + (self.w_w) * widget["column"]
                 self.y_w = diff_height  + (self.h_w) * widget["row"]
 
                 widget["object"].update(self.x_w, self.y_w, self.h_w, self.w_w)
+                wo = widget["object"]
+
+                DEBUG("3) name {} | x: {} y: {} h: {} w: {}"
+                .format(wo.objectName(), wo.x, wo.y, wo.height(), wo.width()) )
 
                 try:
                     widget["object"].show()
 
                 except TypeError as err:
                     # Handle this error when calling show() method <-- unsupscriptable
+                    DEBUG("ERROR name {} | method show()".format(wo.objectName()))
                     pass
 
     def debug(self):
