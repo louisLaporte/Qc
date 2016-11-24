@@ -8,36 +8,22 @@ class CWidget(CObject):
     def __init__(self):
         super().__init__()
 
-        self.h   = 50
-        self.w   = 200
-        self.win = curses.newwin(self.h, self.w)
-        self.x = self.win.getbegyx()[1]
-        self.y = self.win.getbegyx()[0]
+        self.height = 50
+        self.width = 200
+        self.win = curses.newwin(self.height, self.width)
+        self.y, self.x = self.win.getbegyx()
+
+        curses.init_color(curses.COLOR_GREEN, 0, 100, 0)
+        curses.init_pair(1, curses.COLOR_CYAN , curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_RED  , curses.COLOR_BLACK)
+        curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(4, curses.COLOR_CYAN , curses.COLOR_BLACK)
 
     def __call__(self):
         pass
-
-    def setWidth(self, width):
-        self.w = width
-        self.win.resize(self.h, self.w)
-
-    def width(self):
-        return self.w
-
-    def setHeight(self, height):
-        self.h = height
-        self.win.resize(self.h, self.w)
-
-    def height(self):
-        return self.h
-
-    def setSize(self, height, width):
-        self.w = width
-        self.h = height
-        self.win.resize(self.h, self.w)
-
-    def size(self):
-        return self.h, self.w
+    def __str__(self):
+        _str = "{} | x: {} y: {} h: {} w: {}".format(self.objectName(), self.x, self.y, self.height, self.width)
+        return _str
 
     def addLayout(self, layout):
         # import lib when needed, if on top of file an error
@@ -46,102 +32,162 @@ class CWidget(CObject):
         from Qc.Widgets import CGridLayout
 
         if isinstance(layout, CLayout):
-            self.layout        = OrderedDict()
-            self.layout_keys   = ["object", "window"]
-            self.layout.fromkeys(self.layout_keys)
+            self._layout        = OrderedDict()
+            self._layout_keys   = ["object", "window"]
+            self._layout.fromkeys(self._layout_keys)
 
-            self.layout["window"] = curses.newwin(self.height() - 2, self.width() - 2, 1, 1)
-            self.layout["object"] = layout
+            self._layout["window"] = CWidget()
+            self._layout["object"] = layout
         else:
             raise TypeError(layout, "must be a CLayout")
 
+    @property
     def layout(self):
-        return self.layout
+        if hasattr(self, '_layout'):
+            return self._layout
+        else:
+            raise AttributeError
 
-    def update(self, x, y, h, w):
-        self.x = x
-        self.y = y
-        self.h = h
-        self.w = w
+    def update(self, x=None, y=None, h=None, w=None):
+        # this function use key args because of readability
+        self.x      = x
+        self.y      = y
+        self.height = h
+        self.width  = w
 
     def show(self, border=True):
-        curses.init_pair(1, curses.COLOR_CYAN , curses.COLOR_BLACK)
-        curses.init_pair(2, curses.COLOR_RED  , curses.COLOR_BLACK)
-        curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
-        curses.init_pair(4, curses.COLOR_CYAN , curses.COLOR_BLACK)
+        #
+        # It is implemented as 3 levels --> Must 2 levels
 
         self.win.erase()
-        self.win.resize(self.height(), self.width())
+        self.win.resize(self.height, self.width)
         self.win.mvwin(self.y, self.x)
 
-        self.win.attron(curses.color_pair(1))
-        self.win.box()
-        self.win.attroff(curses.color_pair(1))
+        self.color_box(widget=self.win, color=1, box=border)
 
-        curses.echo()
-        self.win.addstr(self.height() - 1, 1, "{} | x: {} y: {} h: {} w: {}"
-                .format(self.objectName(),self.x, self.y, self.height(), self.width()), curses.A_BOLD)
-        curses.noecho()
+        self.window_info()
 
-        DEBUG("1) name {} | x: {} y: {} h: {} w: {}"
-        .format(self.objectName(),self.x, self.y, self.height(), self.width()) )
+        #DEBUG("1) name {} | x: {} y: {} h: {} w: {}"
+        #.format(self.objectName(),self.x, self.y, self.height, self.width) )
 
         self.win.refresh()
 
-        if hasattr(self, "layout"):
-            diff_height = 2
-            diff_width  = 2
-            self.h_l = self.height() - diff_height
-            self.w_l = self.width()  - diff_width
-            self.layout["window"].erase()
-            self.layout["window"].resize(self.h_l, self.w_l)
+        if hasattr(self, '_layout'):
+            lw = self._layout["window"]
+            lo = self._layout["object"]
+            #DEBUG("2) name {} --> add attribute layout"
+            #    .format(self.objectName()) )
 
-            self.layout["window"].attron(curses.color_pair(2))
-            self.layout["window"].box()
-            self.layout["window"].attroff(curses.color_pair(2))
-            self.layout["window"].overlay(self.win)
+            diff_height = 1
+            diff_width  = 1
+            self.l_h = self.height - diff_height * 2
+            self.l_w = self.width  - diff_width  * 2
+            self.l_x = self.x      + diff_height
+            self.l_y = self.y      + diff_width
+            lw.update(x=self.l_x, y=self.l_y, h=self.l_h, w=self.l_w)
 
-            curses.echo()
-            # Print Layout
-            self.layout["window"].addstr(self.h_l - 1, 1, "{} | h: {} w: {}"
-                    .format(self.layout["object"].objectName(), self.h_l, self.w_l), curses.A_BOLD)
-            curses.noecho()
+            lw.win.erase()
+            lw.win.resize(self.l_h, self.l_w)
+            lw.win.mvwin(self.l_y, self.l_x)
+            self.color_box(widget=lw.win, color=2, box=border)
 
-            DEBUG("2) name {}"
-            .format(self.layout["object"].objectName()) )
+            #DEBUG("2.1) drawing {}" .format(lo.objectName()))
 
-            self.layout["window"].refresh()
 
-            for widget in self.layout["object"].widgets:
+            try:
+                lw.win.overlay(self.win)
 
-                self.h_w = (self.h_l - diff_height) // (self.layout["object"].row    + 1)
-                self.w_w = (self.w_l - diff_width)  // (self.layout["object"].column + 1)
-                self.x_w = diff_width   + (self.w_w) * widget["column"]
-                self.y_w = diff_height  + (self.h_w) * widget["row"]
+            except curses.error:
+                DEBUG("overlay problem")
 
-                widget["object"].update(self.x_w, self.y_w, self.h_w, self.w_w)
-                wo = widget["object"]
+            else:
+                self.window_info(lw)
+                #lw.addstr(self.h_l - 1, 1, "{} | h: {} w: {}"
+                #        .format(lo.objectName(), self.h_l, self.w_l), curses.A_BOLD)
+                #curses.noecho()
 
-                DEBUG("3) name {} | x: {} y: {} h: {} w: {}"
-                .format(wo.objectName(), wo.x, wo.y, wo.height(), wo.width()) )
+                lw.win.refresh()
 
-                try:
-                    widget["object"].show()
+                for widget in lo.widgets:
 
-                except TypeError as err:
-                    # Handle this error when calling show() method <-- unsupscriptable
-                    DEBUG("ERROR name {} | method show()".format(wo.objectName()))
-                    pass
+                    wo = widget["object"]
+                    wc = widget["column"]
+                    wr = widget["row"]
+                    self.h_w = (self.l_h - diff_height * 2) // (lo.row    + 1)
+                    self.w_w = (self.l_w - diff_width  * 2) // (lo.column + 1)
+                    self.x_w = self.l_x  + 1 + (self.w_w) * wc
+                    self.y_w = self.l_y  + 1 + (self.h_w) * wr
 
-    def debug(self):
-        DEBUG("Widget: {} | size: {}".format(self.objectName(), self.size()))
+                    wo.update(x=self.x_w, y=self.y_w, h=self.h_w, w=self.w_w)
 
-    def print_size(self):
+                    #DEBUG("3) name {} | x: {} y: {} h: {} w: {}"
+                    #.format(wo.objectName(), wo.x(), wo.y(), wo.height(), wo.width()) )
+
+                    try:
+                        wo.show()
+
+                    except TypeError as err:
+                        # Handle this error when calling show() method <-- unsupscriptable
+                        DEBUG("ERROR for widget: {}  try to exec {}.show() | Error: {}"
+                            .format(self.objectName(), wo.objectName(), err))
+        else:
+            DEBUG("{} has not attribute layout".format(self.objectName()))
+
+    def color_box(self, widget=None, color=None, box=False):
+        if box:
+            widget.attron(curses.color_pair(color))
+            widget.box()
+            widget.attroff(curses.color_pair(color))
+
+    def window_info(self, widget=None):
         try:
             curses.echo()
-            self.win.addstr(self.height() - 3, 2, "h: {} w: {}"
-                    .format(self.height(), self.width()), curses.A_BOLD)
-            curses.noecho()
+            if not widget:
+                self.win.addstr(self.height - 1, 2, str(self))
+            #else:
+            #    widget.win.addstr(widget.height - 1, 2, str(widget))
 
+            curses.noecho()
         except curses.error:
             pass
+
+    @property
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, val):
+        self._x = val
+
+    @property
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, val):
+        self._y = val
+
+    @property
+    def width(self):
+        return self._w
+
+    @width.setter
+    def width(self, width):
+        self._w = width
+
+    @property
+    def height(self):
+        return self._h
+
+    @height.setter
+    def height(self, height):
+        self._h = height
+
+    @property
+    def size(self):
+        return self._h, self._w
+
+    @size.setter
+    def size(self, height, width):
+        self.height = height
+        self.width  = width
